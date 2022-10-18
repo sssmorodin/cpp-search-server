@@ -61,10 +61,9 @@ public:
 
     void AddDocument(int document_id, const string& document) {
         const vector<string> words = SplitIntoWordsNoStop(document);
+		double weight = 1.0 / words.size();
 		for (const string& word : words) {
-			word_to_document_freqs_[word][document_id] += 1.0 / words.size();
-			//map<int, double>& mass = word_to_document_freqs_[word];
-			//mass[document_id] = (1.0*count(words.begin(), words.end(), word))/words.size();
+			word_to_document_freqs_[word][document_id] += weight;
 		}
 		++document_count_;
     }
@@ -84,12 +83,12 @@ public:
     }
     
     void Print() {
-        		for (auto& [key, nums] : word_to_document_freqs_) {
-			cout << key << ' ';
-			for (const auto& num : nums) {
-				cout << num.first << ' ' << num.second << ' ';
-			}
-                    cout << endl;
+        for (auto& [key, nums] : word_to_document_freqs_) {
+		cout << key << ' ';
+		    for (const auto& num : nums) {
+			    cout << num.first << ' ' << num.second << ' ';
+		    }
+            cout << endl;
 		}
     }
 
@@ -102,11 +101,11 @@ private:
         set<string> minus_words;
     };
 
-	map<string, map<int, double>> word_to_document_freqs_;
+    map<string, map<int, double>> word_to_document_freqs_;
 
     set<string> stop_words_;
 	
-	int document_count_ = 0;
+    int document_count_ = 0;
 
     bool IsStopWord(const string& word) const {
         return stop_words_.count(word) > 0;
@@ -142,12 +141,13 @@ private:
     vector<Document> FindAllDocuments(const Query& query_words) const {
         vector<Document> matched_documents;
 		map<int, double> document_to_relevance;
-		vector<int> documents_to_delete;
+        vector<int> documents_to_delete;
 		
         for (const string& word : query_words.plus_words) {
+			double idf = log(1.0 * document_count_ / word_to_document_freqs_.at(word).size())
 			if (word_to_document_freqs_.count(word)) {
 				for (const auto& [id, freq] : word_to_document_freqs_.at(word)) {
-					document_to_relevance[id] += freq*log(1.0*document_count_/word_to_document_freqs_.at(word).size());;	
+					document_to_relevance[id] += freq * idf;	
 				}
 			}
 		}
@@ -192,7 +192,6 @@ SearchServer CreateSearchServer() {
 
 int main() {
     SearchServer search_server = CreateSearchServer();
-// search_server.Print();
     
     const string query = ReadLine();
     for (const auto& [document_id, relevance] : search_server.FindTopDocuments(query)) {
