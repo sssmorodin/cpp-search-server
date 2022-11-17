@@ -1,18 +1,3 @@
-/*
-#include <algorithm>
-#include <cmath>
-#include <map>
-#include <set>
-#include <string>
-#include <utility>
-#include <vector>
-
-#include "search_server.h"
-
-using namespace std;
-*/
-
-/* Подставьте вашу реализацию класса SearchServer сюда */
 #include <numeric>
 #include <iostream>
 #include <algorithm>
