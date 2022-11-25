@@ -7,10 +7,12 @@
 #include <utility>
 #include <vector>
 #include <optional>
+#include <numeric>
 
 using namespace std;
 
 const int MAX_RESULT_DOCUMENT_COUNT = 5;
+const double RELEVANCE_EPSILON = 1e-6;
 
 string ReadLine() {
     string s;
@@ -124,17 +126,13 @@ public:
     vector<Document> FindTopDocuments(const string& raw_query,
                                                 DocumentPredicate document_predicate) const {
 
-        const auto query = ParseQuery(raw_query);
+        const Query query = ParseQuery(raw_query);
 
-        if (!IsValidWord(raw_query) || !query) {
-            throw invalid_argument("Invalid search query"s);
-        }
-
-        auto matched_documents = FindAllDocuments(query.value(), document_predicate);
+        auto matched_documents = FindAllDocuments(query, document_predicate);
 
         sort(matched_documents.begin(), matched_documents.end(),
              [](const Document& lhs, const Document& rhs) {
-                 if (abs(lhs.relevance - rhs.relevance) < 1e-6) {
+                 if (abs(lhs.relevance - rhs.relevance) < RELEVANCE_EPSILON) {
                      return lhs.rating > rhs.rating;
                  } else {
                      return lhs.relevance > rhs.relevance;
@@ -162,13 +160,10 @@ public:
     }
 
     tuple<vector<string>, DocumentStatus> MatchDocument(const string& raw_query, int document_id) const {
-        const auto query = ParseQuery(raw_query);
-        if (!IsValidWord(raw_query) || !query) {
-            throw invalid_argument("Invalid search query"s);
-        }
+        const Query query = ParseQuery(raw_query);
 
         vector<string> matched_words;
-        for (const string& word : query->plus_words) {
+        for (const string& word : query.plus_words) {
             if (word_to_document_freqs_.count(word) == 0) {
                 continue;
             }
@@ -176,7 +171,7 @@ public:
                 matched_words.push_back(word);
             }
         }
-        for (const string& word : query->minus_words) {
+        for (const string& word : query.minus_words) {
             if (word_to_document_freqs_.count(word) == 0) {
                 continue;
             }
@@ -226,10 +221,7 @@ private:
         if (ratings.empty()) {
             return 0;
         }
-        int rating_sum = 0;
-        for (const int rating : ratings) {
-            rating_sum += rating;
-        }
+        int rating_sum = accumulate(ratings.begin(), ratings.end(), 0);
         return rating_sum / static_cast<int>(ratings.size());
     }
 
@@ -239,8 +231,7 @@ private:
         bool is_stop;
     };
 
-    optional<QueryWord> ParseQueryWord(string text) const {
-        //QueryWord query_word;
+    QueryWord ParseQueryWord(string text) const {
         bool is_minus = false;
         // Word shouldn't be empty
         if (text[0] == '-') {
@@ -248,7 +239,7 @@ private:
             text = text.substr(1);
         }
         if ((text[0] == '-') || text.empty()) {
-            return nullopt;
+            throw invalid_argument("Invalid search query"s);
         }
         return QueryWord{text, is_minus, IsStopWord(text)};
     }
@@ -258,16 +249,18 @@ private:
         set<string> minus_words;
     };
 
-    optional<Query> ParseQuery(const string& text) const {
+    Query ParseQuery(const string& text) const {
+        if (!IsValidWord(text)) {
+            throw invalid_argument("Invalid search query"s);
+        }
         Query query;
         for (const string& word : SplitIntoWords(text)) {
-            const auto query_word = ParseQueryWord(word);
-            if (!query_word) return nullopt;
-            if (!query_word->is_stop) {
-                if (query_word->is_minus) {
-                    query.minus_words.insert(query_word->data);
+            const QueryWord query_word = ParseQueryWord(word);
+            if (!query_word.is_stop) {
+                if (query_word.is_minus) {
+                    query.minus_words.insert(query_word.data);
                 } else {
-                    query.plus_words.insert(query_word->data);
+                    query.plus_words.insert(query_word.data);
                 }
             }
         }
