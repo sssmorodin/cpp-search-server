@@ -16,7 +16,7 @@ void SearchServer::AddDocument(int document_id, const std::string& document, Doc
         id_to_word_freqs_[document_id][word] += inv_word_count;
     }
     documents_.emplace(document_id, DocumentData{ComputeAverageRating(ratings), status});
-    document_ids_.push_back(document_id);
+    document_ids_.insert(document_id);
 }
 
 std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_query, DocumentStatus status) const {
@@ -32,14 +32,6 @@ std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_quer
 int SearchServer::GetDocumentCount() const {
     return documents_.size();
 }
-
-
-
-/*
-int SearchServer::GetDocumentId(int index) const {
-    return document_ids_.at(index);
-}
- */
 
 std::tuple<std::vector<std::string>, DocumentStatus> SearchServer::MatchDocument(const std::string& raw_query,
                                                                        int document_id) const {
@@ -143,20 +135,23 @@ const std::map<std::string, double>& SearchServer::GetWordFrequencies(int docume
 }
 
 void SearchServer::RemoveDocument(int document_id) {
-    //std::map<std::string, std::map<int, double>> word_to_document_freqs_;
-    for (auto& [_, id_to_freq] : word_to_document_freqs_) {
-        if (id_to_freq.count(document_id)) {
-            id_to_freq.erase(document_id);
+    //remove from std::map<std::string, std::map<int, double>> word_to_document_freqs_;
+    auto words_to_freq = GetWordFrequencies(document_id);
+    if (!words_to_freq.empty()) {
+        for (auto& [word, _ ] : words_to_freq) {
+            if (word_to_document_freqs_.at(word).count(document_id)) {
+                word_to_document_freqs_.at(word).erase(document_id);
+            }
         }
     }
 
-    //std::map<int, DocumentData> documents_;
+    //remove from std::map<int, DocumentData> documents_;
     documents_.erase(document_id);
 
-    //std::vector<int> document_ids_;
-    document_ids_.erase(std::remove(document_ids_.begin(), document_ids_.end(), document_id), document_ids_.end());
+    //remove from std::set<int> document_ids_;
+    document_ids_.erase(document_id);
 
-    //std::map<int, std::map<std::string, double>> id_to_word_freqs_;
+    //remove from std::map<int, std::map<std::string, double>> id_to_word_freqs_;
     id_to_word_freqs_.erase(document_id);
 }
 
