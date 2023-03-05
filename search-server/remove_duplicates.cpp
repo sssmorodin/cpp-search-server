@@ -8,7 +8,7 @@ void RemoveDuplicates(SearchServer& search_server) {
         const auto& words_to_freq = search_server.GetWordFrequencies(document_id);
         std::set<std::string> document_words;
         for (const auto& word_with_freq: words_to_freq) {
-            document_words.insert(word_with_freq.first);
+            document_words.insert(std::string(word_with_freq.first));
         }
         if (0 == documents_words.count(document_words)) {
             documents_words.insert(document_words);
